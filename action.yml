@@ -1,18 +1,18 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Delay for a given number of milliseconds'
+description: 'Delay for a given number of milliseconds'
+author: 'Leo Fu'
 
 # Define your inputs here.
 inputs:
   milliseconds:
-    description: 'Your input description here'
+    description: 'The number of milliseconds to wait'
     required: true
     default: '1000'
 
 # Define your outputs here.
 outputs:
   time:
-    description: 'Your output description here'
+    description: 'The time it took to wait for'
 
 runs:
   using: node20
