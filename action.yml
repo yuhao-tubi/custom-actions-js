@@ -1,19 +1,39 @@
-name: 'Delay for a given number of milliseconds'
-description: 'Delay for a given number of milliseconds'
+name: 'Gmail Summary with OpenAI'
+description: 'Summarize Gmail messages using OpenAI API'
 author: 'Leo Fu'
 
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'The number of milliseconds to wait'
+  gmail_api_key:
+    description: 'Gmail API key for accessing emails'
     required: true
-    default: '1000'
+  openai_api_key:
+    description: 'OpenAI API key for generating summaries'
+    required: true
+  max_emails:
+    description: 'Maximum number of emails to summarize'
+    required: false
+    default: '10'
+  label:
+    description: 'Gmail label to filter emails (optional)'
+    required: false
+    default: 'INBOX'
+  days_ago:
+    description: 'Number of days of emails to summarize'
+    required: false
+    default: '1'
 
-# Define your outputs here.
 outputs:
-  time:
-    description: 'The time it took to wait for'
+  summary:
+    description: 'Generated summary of Gmail messages'
+  processed_emails:
+    description: 'Number of emails that were processed'
+  error:
+    description: 'Error message if any occurred during execution'
 
 runs:
   using: node20
   main: dist/index.js
+
+branding:
+  icon: 'mail'
+  color: 'blue'

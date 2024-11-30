@@ -1,5 +1,127 @@
 const core = require('@actions/core')
-const { wait } = require('./wait')
+const { google } = require('googleapis')
+const OpenAI = require('openai')
+
+/**
+ * Authenticate with Gmail API using API key
+ * @param {string} apiKey - Gmail API key
+ * @returns {gmail_v1.Gmail} - Gmail API client
+ */
+async function getGmailClient(apiKey) {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(apiKey),
+    scopes: ['https://www.googleapis.com/auth/gmail.readonly']
+  })
+
+  return google.gmail({ version: 'v1', auth })
+}
+
+/**
+ * Get emails from Gmail within date range
+ * @param {gmail_v1.Gmail} gmail - Gmail API client
+ * @param {number} daysAgo - Number of days to look back
+ * @param {string} label - Gmail label to filter
+ * @param {number} maxEmails - Maximum number of emails to fetch
+ * @returns {Promise<Array>} Array of email messages
+ */
+async function getEmails(gmail, daysAgo, label, maxEmails) {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  const query = `label:${label} after:${date.toISOString().split('T')[0]}`
+
+  try {
+    const response = await gmail.users.messages.list({
+      userId: 'me',
+      q: query,
+      maxResults: maxEmails
+    })
+
+    const emails = []
+    for (const message of response.data.messages || []) {
+      const email = await gmail.users.messages.get({
+        userId: 'me',
+        id: message.id,
+        format: 'full'
+      })
+      emails.push(email.data)
+    }
+
+    return emails
+  } catch (error) {
+    throw new Error(`Failed to fetch emails: ${error.message}`)
+  }
+}
+
+/**
+ * Extract email content and metadata
+ * @param {Object} email - Gmail message object
+ * @returns {Object} Formatted email data
+ */
+function parseEmail(email) {
+  const headers = email.payload.headers
+  const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject'
+  const from = headers.find(h => h.name === 'From')?.value || 'Unknown Sender'
+  const date = headers.find(h => h.name === 'Date')?.value || ''
+
+  let body = ''
+  if (email.payload.parts) {
+    const textPart = email.payload.parts.find(
+      part => part.mimeType === 'text/plain'
+    )
+    if (textPart && textPart.body.data) {
+      body = Buffer.from(textPart.body.data, 'base64').toString()
+    }
+  } else if (email.payload.body.data) {
+    body = Buffer.from(email.payload.body.data, 'base64').toString()
+  }
+
+  return {
+    subject,
+    from,
+    date,
+    body
+  }
+}
+
+/**
+ * Generate summary using OpenAI
+ * @param {OpenAI} openai - OpenAI API client
+ * @param {Array} emails - Array of parsed emails
+ * @returns {Promise<string>} Generated summary
+ */
+async function generateSummary(openai, emails) {
+  const emailsContent = emails
+    .map(
+      email =>
+        `From: ${email.from}\nSubject: ${email.subject}\nDate: ${email.date}\n\n${email.body}\n---`
+    )
+    .join('\n')
+
+  const prompt = `Please summarize the following emails in a concise and organized way, 
+    highlighting important information and action items:\n\n${emailsContent}`
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a helpful assistant that summarizes emails clearly and concisely.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 1000
+    })
+
+    return completion.choices[0].message.content
+  } catch (error) {
+    throw new Error(`Failed to generate summary: ${error.message}`)
+  }
+}
 
 /**
  * The main function for the action.
@@ -7,20 +129,35 @@ const { wait } = require('./wait')
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    // Get inputs
+    const gmailApiKey = core.getInput('gmail_api_key', { required: true })
+    const openaiApiKey = core.getInput('openai_api_key', { required: true })
+    const maxEmails = parseInt(core.getInput('max_emails'), 30)
+    const label = core.getInput('label')
+    const daysAgo = parseInt(core.getInput('days_ago'), 1)
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    // Initialize API clients
+    const gmail = await getGmailClient(gmailApiKey)
+    const openai = new OpenAI({ apiKey: openaiApiKey })
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    // Get emails
+    core.debug(
+      `Fetching up to ${maxEmails} emails from the last ${daysAgo} days with label ${label}...`
+    )
+    const emails = await getEmails(gmail, daysAgo, label, maxEmails)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    // Parse emails
+    const parsedEmails = emails.map(parseEmail)
+
+    // Generate summary
+    core.debug('Generating summary with OpenAI...')
+    const summary = await generateSummary(openai, parsedEmails)
+
+    // Set outputs
+    core.setOutput('summary', summary)
+    core.setOutput('processed_emails', emails.length)
   } catch (error) {
-    // Fail the workflow run if an error occurs
+    core.setOutput('error', error.message)
     core.setFailed(error.message)
   }
 }

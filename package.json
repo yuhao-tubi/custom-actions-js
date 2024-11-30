@@ -64,7 +64,10 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "@google-cloud/local-auth": "^2.1.0",
+    "googleapis": "^105.0.0",
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
