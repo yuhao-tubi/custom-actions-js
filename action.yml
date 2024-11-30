@@ -1,19 +1,35 @@
-name: 'Delay for a given number of milliseconds'
-description: 'Delay for a given number of milliseconds'
-author: 'Leo Fu'
+name: 'PR Review Summary'
+description: 'Summarizes all PRs pending your review using OpenAI'
+author: 'Your Name'
 
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'The number of milliseconds to wait'
+  github_token:
+    description: 'GitHub token for API access'
     required: true
-    default: '1000'
+  openai_api_key:
+    description: 'OpenAI API key'
+    required: true
+  model:
+    description: 'OpenAI model to use'
+    required: false
+    default: 'gpt-4'
+  max_prs:
+    description: 'Maximum number of PRs to summarize'
+    required: false
+    default: '100'
+  days_ago:
+    description: 'Only include PRs created within this many days'
+    required: false
+    default: '1'
 
-# Define your outputs here.
 outputs:
-  time:
-    description: 'The time it took to wait for'
+  summary:
+    description: 'JSON string containing all PR summaries'
 
 runs:
-  using: node20
-  main: dist/index.js
+  using: 'node20'
+  main: 'dist/index.js'
+
+branding:
+  icon: 'book-open'
+  color: 'blue'

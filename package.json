@@ -64,7 +64,9 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "@octokit/rest": "^20.0.2",
+    "openai": "^4.28.4"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
