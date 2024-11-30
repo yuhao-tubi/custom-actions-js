@@ -3,8 +3,8 @@ description: 'Summarize Gmail messages using OpenAI API'
 author: 'Leo Fu'
 
 inputs:
-  gmail_api_key:
-    description: 'Gmail API key for accessing emails'
+  service_account_key:
+    description: 'Google Cloud service account key JSON string'
     required: true
   openai_api_key:
     description: 'OpenAI API key for generating summaries'

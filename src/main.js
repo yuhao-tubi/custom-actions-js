@@ -1,19 +1,23 @@
 const core = require('@actions/core')
 const { google } = require('googleapis')
 const OpenAI = require('openai')
+const path = require('path')
 
 /**
- * Authenticate with Gmail API using API key
- * @param {string} apiKey - Gmail API key
+ * Authenticate with Gmail API using service account
+ * @param {string} serviceAccountKey - Service account key JSON string
  * @returns {gmail_v1.Gmail} - Gmail API client
  */
-async function getGmailClient(apiKey) {
+async function getGmailClient(serviceAccountKey) {
   const auth = new google.auth.GoogleAuth({
-    credentials: JSON.parse(apiKey),
+    credentials: JSON.parse(serviceAccountKey),
     scopes: ['https://www.googleapis.com/auth/gmail.readonly']
   })
 
-  return google.gmail({ version: 'v1', auth })
+  return google.gmail({
+    version: 'v1',
+    auth
+  })
 }
 
 /**
@@ -130,14 +134,14 @@ async function generateSummary(openai, emails) {
 async function run() {
   try {
     // Get inputs
-    const gmailApiKey = core.getInput('gmail_api_key', { required: true })
+    const serviceAccountKey = core.getInput('service_account_key', { required: true })
     const openaiApiKey = core.getInput('openai_api_key', { required: true })
     const maxEmails = parseInt(core.getInput('max_emails'), 30)
     const label = core.getInput('label')
-    const daysAgo = parseInt(core.getInput('days_ago'), 1)
+    const daysAgo = parseInt(core.getInput('days_ago'), 10)
 
     // Initialize API clients
-    const gmail = await getGmailClient(gmailApiKey)
+    const gmail = await getGmailClient(serviceAccountKey)
     const openai = new OpenAI({ apiKey: openaiApiKey })
 
     // Get emails
