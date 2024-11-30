@@ -14,7 +14,7 @@ async function summarizePRs() {
   try {
     // Get authenticated user
     const { data: user } = await octokit.users.getAuthenticated()
-    
+
     // Get PRs where you're requested as reviewer
     const { data: prs } = await octokit.search.issuesAndPullRequests({
       q: `is:open is:pr review-requested:${user.login}`,
